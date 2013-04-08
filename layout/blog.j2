@@ -1,0 +1,29 @@
+{% extends "base.j2" %}
+
+{% block main -%}
+	<h2 class="post-title">{{ resource.meta.title }}</h2>
+    <p class="post-info">
+        posted by Ian on {{ resource.meta.created.strftime('%B %e, %Y') }}
+    </p>
+
+    {% filter markdown|typogrify -%}
+    {% mark post -%}
+    {% block post -%}{%- endblock %}
+    {%- endmark %}
+    {%- endfilter %}
+
+    <div class="post-comments">
+        <h2 class="post-title">Comments</h2>
+        <div id="disqus_thread"></div>
+        <script type="text/javascript">
+            var disqus_shortname = 'ianalexandr';
+
+            (function() {
+                var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+                dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+                (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+            })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    </div>
+{% endblock %}

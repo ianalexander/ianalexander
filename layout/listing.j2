@@ -1,0 +1,16 @@
+{% extends "base.j2" %}
+
+{% block container %}
+{% for res in resource.node.walk_resources_sorted_by_time() %}
+{% refer to res.url as post %}
+<div class="row">
+    <div class="span8 offset2">
+    	<p>
+	        <h3 class="list-title"><a href="{{ content_url(res.url) }}">{{ res.meta.title }}</a></h3>
+	        <span class="list-info">by Ian on {{ res.meta.created.strftime('%B %e, %Y') }}</span>
+	        <span class="list-excerpt">{{ post.excerpt|markdown|typogrify }}</span>
+	    </p>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
