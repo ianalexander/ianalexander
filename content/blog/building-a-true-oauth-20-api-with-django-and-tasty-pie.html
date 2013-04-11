@@ -1,0 +1,332 @@
+---
+title: Building a True OAuth 2.0 API with Django and Tasty Pie
+excerpt: >
+    Almost a year ago PyDanny wrote a great article entitled "The Sorry State of Python OAuth Providers" detailing the abysmal state of OAuth in Python. One year later we have a few more options, and here I am going to detail how I made a django-based OAuth 2.0 API with Tasty Pie.
+created: !!timestamp '2013-04-08 08:00:00'
+---
+
+Almost a year ago PyDanny wrote a great article entitled "[The Sorry State of Python OAuth Providers][1]" detailing the abysmal state of OAuth in Python. One year later we have a few more options, and here I am going to detail how I made a django-based OAuth 2.0 API with Tasty Pie.
+
+## Getting Started
+
+First things first, I cannot recommend enough the [Mashape OAuth Bible][2] enough. It is currently the most comprehensive document I have found covering both OAuth 1 and 2, and the various flows involved with each. Read up before you get started! We'll be using various components to put our API together:
+
+- CaffieneHit's [django-oauth2-provider][3] library will provide out-of-the-box OAuth provisioning capabilities 
+- [Tasty Pie][4] will create the API
+- My [django-oauth2-tastypie][5] library will marry the two together
+
+I'll be using the classic django "Polls and Choices" models as my examples.
+
+## Setting up Django
+
+First things first, we need to create a new django project and create the essential models.
+
+{% syntax bash %}
+$ django-admin.py startproject mysite
+$ cd mysite/
+$ python manage.py startapp polls
+{% endsyntax %}
+
+{% syntax python %}
+# mysite/polls/models.py
+from django.db import models
+
+class Poll(models.Model):
+    question = models.CharField(max_length=200)
+    pub_date = models.DateTimeField('date published')
+    def __unicode__(self):
+        return self.question
+
+class Choice(models.Model):
+    poll = models.ForeignKey(Poll)
+    choice_text = models.CharField(max_length=200)
+    votes = models.IntegerField(default=0)
+    def __unicode(self):
+        return self.choice_text
+{% endsyntax %}
+
+{% syntax python %}
+# mysite/polls/settings.py
+INSTALLED_APPS = (
+    ...
+    'django.contrib.admin'
+    'polls',
+)
+{% endsyntax %}
+
+Make sure you also add your database configuration and syncdb to add a new user. No surprises here!
+
+## Setting up the Provider
+
+First we're going to install the provider.
+
+{% syntax bash %}
+$ sudo pip install django-oauth2-provider
+{% endsyntax %}
+
+Next, add the two lines to add the default providers (which should be fine for most use-cases).
+
+{% syntax python %}
+# mysite/polls/settings.py
+INSTALLED_APPS = (
+    ...
+    'django.contrib.admin'
+    'polls',
+    'provider',
+    'provider.oauth2',
+)
+{% endsyntax %}
+
+Include provider.oauth2.urls into your urls.py file (`namespace='oauth2'` is required!). Uncomment the admin lines at the top of the file for ease of working with tokens and clients.
+
+{% syntax python %}
+# mysite/polls/urls.py
+from django.contrib import admin
+admin.autodiscover()
+...
+url(r'^oauth2/', include('provider.oauth2.urls', namespace = 'oauth2')),
+{% endsyntax %}
+
+Finally, use the admin console to add a new Client. Or you can do it programatically:
+
+{% syntax pycon %}
+>>> from provider.oauth2.models import Client
+>>> from django.contrib.auth.models import User
+>>> u = User.objects.get(id=1)
+>>> c = Client(user=u, name="mysite client", client_type=1, url="http://ianalexandr.com")
+>>> c.save()
+>>> c.client_id
+'d63f53a7a6cceba04db5'
+>>> c.client_secret
+'afe899288b9ac4127d57f2f12ac5a49d839364dc'
+{% endsyntax %}
+
+## Testing the Provider
+
+Now we can launch the server and test the OAuth Provider. We'll be using the [Two-Legged Resource Owner Password][6] flow.
+
+{% syntax bash %}
+$ python manage.py runserver
+
+$ curl -d "client_id=d63f53a7a6cceba04db5&client_secret=afe899288b9ac4127d57f2f12ac5a49d839364dc&grant_type=password&username=ian&password=straightflexin&scope=write" http://localhost:8000/oauth2/access_token
+{"access_token": "a832106c17d00fd3b9094181c598820ef3ff76f4", "scope": "read write", "expires_in": 86399, "refresh_token": "bfdbd5510ae724a2dbd458e68274ab5c8590d3e4"}
+{% endsyntax %}
+
+If you see the access_token, viola! It's working! Verify the access_token is stored in your database:
+
+{% syntax pycon %}
+>>> from provider.oauth2.models import AccessToken
+>>> AccessToken.objects.all()
+[<AccessToken: a832106c17d00fd3b9094181c598820ef3ff76f4>]
+{% endsyntax %}
+
+## Setting up the API
+
+Now let's add Tasty Pie to the mix. First things first:
+
+{% syntax bash %}
+$ sudo pip install django-tastypie
+{% endsyntax %}
+{% syntax python %}
+# mysite/polls/settings.py
+INSTALLED_APPS = (
+    ...
+    'django.contrib.admin'
+    'polls',
+    'provider',
+    'provider.oauth2',
+    'tastypie',
+)
+{% endsyntax %}
+
+Now we need to add the appropriate Resources to our to our application. I like to use `polls/api.py` but these classes can live anywhere. Once the Resources are created, we'll add them to our `urls.py` using the `Api()` class to bind multiple resources together.
+
+{% syntax python %}
+# mysite/polls/api.py
+from tastypie.resources import ModelResource
+from polls.models import Poll, Choice
+from tastypie import fields
+
+class ChoiceResource(ModelResource):
+    class Meta:
+        queryset = Choice.objects.all()
+        resource_name = 'choice'
+
+class PollResource(ModelResource):
+    choices = fields.ToManyField(ChoiceResource, 'choice_set', full=True)
+    class Meta:
+        queryset = Poll.objects.all()
+        resource_name = 'poll'
+{% endsyntax %}
+{% syntax python %}
+# mysite/mysite/urls.py
+from django.conf.urls import patterns, include, url
+from django.contrib import admin
+admin.autodiscover()
+
+from tastypie.api import Api
+from polls.api import PollResource, ChoiceResource
+
+v1_api = Api(api_name='v1')
+v1_api.register(PollResource())
+v1_api.register(ChoiceResource())
+
+urlpatterns = patterns('',
+    url(r'^admin/', include(admin.site.urls)),
+    url(r'^oauth2/', include('provider.oauth2.urls', namespace = 'oauth2')),
+    url(r'^api/', include(v1_api.urls)),
+)
+{% endsyntax %}
+
+Now let's test our our API!
+
+{% syntax bash %}
+$ curl http://127.0.0.1:8000/api/v1/?format=json
+{"choice": {"list_endpoint": "/api/v1/choice/", "schema": "/api/v1/choice/schema/"}, "poll": {"list_endpoint": "/api/v1/poll/", "schema": "/api/v1/poll/schema/"}}
+{% endsyntax %}
+
+Looks like it's working, let's add an object and test the other endpoints:
+
+{% syntax pycon %}
+>>> from polls.models import *
+>>> import datetime
+>>> p = Poll(question="All gold everything?", pub_date=datetime.datetime.now())
+>>> p.choice_set.create(choice_text='Chain', votes=0)
+<Choice: Choice object>
+>>> p.choice_set.create(choice_text='Ring', votes=0)
+<Choice: Choice object>
+>>> p.choice_set.create(choice_text='Watch', votes=0)
+<Choice: Choice object>
+>>> p.save()
+{% endsyntax %}
+{% syntax bash %}
+$ curl http://127.0.0.1:8000/api/v1/poll/?format=json
+{"meta": {"limit": 20, "next": null, "offset": 0, "previous": null, "total_count": 1}, "objects": [{"choices": [{"choice_text": "Chain", "id": 1, "resource_uri": "/api/v1/choice/1/", "votes": 0}, {"choice_text": "Ring", "id": 2, "resource_uri": "/api/v1/choice/2/", "votes": 0}, {"choice_text": "Watch", "id": 3, "resource_uri": "/api/v1/choice/3/", "votes": 0}], "id": 1, "pub_date": "2013-04-10T12:38:47.337475", "question": "All gold everything?", "resource_uri": "/api/v1/poll/1/"}]}
+{% endsyntax %}
+
+## Authenticating with django-oauth2-tastypie
+
+Now we have an OAuth 2.0 provider and an API. Next we'll need to tell Tasty Pie to accept tokens, and to use django-oauth2-provider to validate the tokens.
+
+Briefly before we get started: what is the difference between **authentication** and **authorization**? **Authentication** answers the question, "Who is this person?" Authentication deals with usernames and passwords, OAuth Tokens, API Keys, and other means of identification. **Authorization** answers the question "Is this person allowed to perfom this action"? Authorizaton deals with permissions, and access limitations.
+
+First take a look at the `OAuth20Authentication` class in [django-oauth2-tastypie][5]. Copy (or clone) `authenticate.py` into your `mysite/polls/` directory.
+
+Next, modify your `api.py` file to use the new `Authentication` class (and the `DjangoAuthrorization` class for good measure).
+
+{% syntax python %}
+# mysite/polls/api.py
+from tastypie.resources import ModelResource
+from tastypie.authorization import DjangoAuthorization
+from polls.models import Poll, Choice
+from tastypie import fields
+from authentication import OAuth20Authentication
+
+class ChoiceResource(ModelResource):
+    class Meta:
+        queryset = Choice.objects.all()
+        resource_name = 'choice'
+        authorization = DjangoAuthorization()
+        authentication = OAuth20Authentication()
+
+class PollResource(ModelResource):
+    choices = fields.ToManyField(ChoiceResource, 'choice_set', full=True)
+    class Meta:
+        queryset = Poll.objects.all()
+        resource_name = 'poll'
+        authorization = DjangoAuthorization()
+        authentication = OAuth20Authentication()
+{% endsyntax %}
+
+Now let's try to access our API again.
+
+{% syntax bash %}
+$ curl -v http://127.0.0.1:8000/api/v1/poll/?format=json
+* About to connect() to 127.0.0.1 port 8000 (#0)
+*   Trying 127.0.0.1... connected
+> GET /api/v1/poll/?format=json HTTP/1.1
+> User-Agent: curl/7.22.0 (x86_64-pc-linux-gnu) libcurl/7.22.0 OpenSSL/1.0.1 zlib/1.2.3.4 libidn/1.23 librtmp/2.3
+> Host: 127.0.0.1:8000
+> Accept: */*
+> 
+* HTTP 1.0, assume close after body
+< HTTP/1.0 401 UNAUTHORIZED
+< Date: Thu, 11 Apr 2013 00:25:46 GMT
+< Server: WSGIServer/0.1 Python/2.7.3
+< Content-Type: text/html; charset=utf-8
+< 
+* Closing connection #0
+{% endsyntax %}
+
+Access Denied! Now let's add our Access Token to the Authorize header and try again.
+
+{% syntax bash %}
+$ curl -v -H "Authorization: OAuth a832106c17d00fd3b9094181c598820ef3ff76f4" http://127.0.0.1:8000/api/v1/poll/?format=json
+* About to connect() to 127.0.0.1 port 8000 (#0)
+*   Trying 127.0.0.1... connected
+> GET /api/v1/poll/?format=json HTTP/1.1
+> User-Agent: curl/7.22.0 (x86_64-pc-linux-gnu) libcurl/7.22.0 OpenSSL/1.0.1 zlib/1.2.3.4 libidn/1.23 librtmp/2.3
+> Host: 127.0.0.1:8000
+> Accept: */*
+> Authorization: OAuth a832106c17d00fd3b9094181c598820ef3ff76f4
+> 
+* HTTP 1.0, assume close after body
+< HTTP/1.0 200 OK
+< Date: Thu, 11 Apr 2013 00:27:42 GMT
+< Server: WSGIServer/0.1 Python/2.7.3
+< Vary: Accept
+< Content-Type: application/json
+< Cache-Control: no-cache
+< 
+* Closing connection #0
+{"meta": {"limit": 20, "next": null, "offset": 0, "previous": null, "total_count": 1}, "objects": [{"choices": [{"choice_text": "Chain", "id": 1, "resource_uri": "/api/v1/choice/1/", "votes": 0}, {"choice_text": "Ring", "id": 2, "resource_uri": "/api/v1/choice/2/", "votes": 0}, {"choice_text": "Watch", "id": 3, "resource_uri": "/api/v1/choice/3/", "votes": 0}], "id": 1, "pub_date": "2013-04-10T12:38:47.337475", "question": "All gold everything?", "resource_uri": "/api/v1/poll/1/"}]}
+{% endsyntax %}
+
+Success! Let's try to post some data. Personally, I prefer gold all in my watch.
+
+{% syntax bash %}
+$ curl --dump-header - -H "Authorization: OAuth a832106c17d00fd3b9094181c598820ef3ff76f4" -H "Content-Type: application/json" -X put --data '{"choice_text": "Watch", "id": 3, "resource_uri": "/api/v1/choice/3/", "votes": 1}' http://127.0.0.1:8000/api/v1/choice/3/
+HTTP/1.0 204 NO CONTENT
+Date: Thu, 11 Apr 2013 00:50:34 GMT
+Server: WSGIServer/0.1 Python/2.7.3
+Vary: Accept
+Content-Length: 0
+Content-Type: text/html; charset=utf-8
+$ curl --dump-header - -H "Authorization: OAuth a832106c17d00fd3b9094181c598820ef3ff76f4" http://127.0.0.1:8000/api/v1/poll/?format=json
+HTTP/1.0 200 OK
+Date: Thu, 11 Apr 2013 00:51:36 GMT
+Server: WSGIServer/0.1 Python/2.7.3
+Vary: Accept
+Content-Type: application/json
+Cache-Control: no-cache
+
+{"meta": {"limit": 20, "next": null, "offset": 0, "previous": null, "total_count": 1}, "objects": [{"choices": [{"choice_text": "Chain", "id": 1, "resource_uri": "/api/v1/choice/1/", "votes": 0}, {"choice_text": "Ring", "id": 2, "resource_uri": "/api/v1/choice/2/", "votes": 0}, {"choice_text": "Watch", "id": 3, "resource_uri": "/api/v1/choice/3/", "votes": 1}], "id": 1, "pub_date": "2013-04-10T12:38:47.337475", "question": "All gold everything?", "resource_uri": "/api/v1/poll/1/"}]}
+{% endsyntax %}
+
+Now it shows our updated resource. Our API is now authenticating with OAuth 2.0!
+
+## Next Steps
+
+This brief example shows how to get started with your API. Taking your API to the next level you may have some more questions:
+
+**How do I manage the scope of the tokens?** Token scope for `django-oauth2-provider` can be overwritten in your django project's `settings.py` file. Use the [SCOPES][7] setting to define new token scope.
+
+**How do I change the lifetime of my tokens?** Similar to scope, you can set the token expiry time in the `settings.py` as well. Check the [EXPIRE_DELTA][7] setting to change the token expiry time.
+
+**How do I manage authorization permissions?** `DjangoAuthorization()` is a standard Tasty Pie class. Check the [documentation][8] and [source][9] for more information.
+
+## Thank you!
+
+If you found this useful, please send me a [tweet][10] or get in contact with me via the top of the page. Good luck!
+
+
+[1]: http://pydanny.com/the-sorry-state-of-python-oauth-providers.html
+[2]: https://github.com/Mashape/mashape-oauth/blob/master/FLOWS.md
+[3]: https://github.com/caffeinehit/django-oauth2-provider
+[4]: http://tastypieapi.org/
+[5]: https://github.com/ianalexander/django-oauth2-tastypie
+[6]: https://github.com/Mashape/mashape-oauth/blob/master/FLOWS.md#oauth-2-two-legged
+[7]: https://django-oauth2-provider.readthedocs.org/en/latest/api.html#provider-constants
+[8]: http://django-tastypie.readthedocs.org/en/latest/authentication_authorization.html#djangoauthorization
+[9]: https://github.com/toastdriven/django-tastypie/blob/master/tastypie/authorization.py#L130
+[10]: https://twitter.com/ianalexan
