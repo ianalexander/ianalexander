@@ -8,7 +8,7 @@
     	<p>
 	        <h3 class="list-title"><a href="{{ content_url(res.url) }}">{{ res.meta.title }}</a></h3>
 	        <span class="list-info">by Ian on {{ res.meta.created.strftime('%B %e, %Y') }}</span>
-	        <span class="list-excerpt">{{ post.excerpt|markdown|typogrify }}</span>
+	        <span class="list-excerpt">{{ res.meta.excerpt|markdown|typogrify }}</span>
 	    </p>
     </div>
 </div>
