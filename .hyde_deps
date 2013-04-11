@@ -1,6 +1,7 @@
 !!python/unicode 'about.html': [macros.j2, base.j2, analytics.j2]
+!!python/unicode 'blog/.hyde_deps': [blog.j2, base.j2, analytics.j2]
 !!python/unicode 'blog/angry-post.html': [blog.j2, macros.j2, base.j2, analytics.j2]
-!!python/unicode 'blog/atom.xml': [atom.j2, macros.j2]
+!!python/unicode 'blog/atom.xml': [atom.j2]
 !!python/unicode 'blog/building-a-true-oauth-20-api-with-django-and-tasty-pie.html': [
   blog.j2, base.j2, analytics.j2]
 !!python/unicode 'blog/does-the-internet-really-need-another-blog.html': [blog.j2,
