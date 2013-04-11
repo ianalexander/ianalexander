@@ -3,26 +3,35 @@
 pre { 
 	font-family: Monaco, Menlo, Consolas, "Courier New", monospace;
 	font-size: 13px;
-	background: #272822; 
-	color: #f8f8f2;
 
 	display: block;
 	padding: 9.5px;
 	margin: 0 0 10px;
-	line-height: 20px;
+	line-height: 15px;
 
 	word-break: break-all;
 	word-wrap: break-word;
 	white-space: pre-wrap;
+}
+
+.code {
+	position: relative;
+	background: #272822; 
+	color: #f8f8f2;
 	border: 1px solid rgba(0, 0, 0, 0.15);
 	-webkit-border-radius: 4px;
 	   -moz-border-radius: 4px;
 	        border-radius: 4px;
 }
 
-
 /* Sweet CSS Hack here to get Hyde to stop displaying the figcaption */
-figure.code figcaption { display: none; }
+figure.code figcaption { 
+	color: #75715e; /* should be the same as .c */
+	font-size: 13px;
+	position: absolute; 
+	right: 7px;
+	bottom: 0px;
+}
 figure.code > br { display: none; }/*
 figure.code figcaption {
 	font-size: 10px;
