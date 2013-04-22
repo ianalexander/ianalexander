@@ -1,0 +1,165 @@
+---
+title: Getting Started with Django Logging in 5 Minutes
+excerpt: >
+    Setting up Django logging can sometimes be a little complex, so here are the no-nonsense steps required to make a new Django 1.5 instance log to a file without hassles.
+created: !!timestamp '2013-04-16 07:30:00'
+---
+
+Setting up Django logging can sometimes be a little complex, so here are the no-nonsense steps required to make a new Django 1.5 instance log to a file without hassles. We're going to look at each of the 4 components of Django logging:
+
+1. **Loggers:** a *logger* is the object that we will use to pass messages to the logging system
+2. **Handlers:** the *handler* is an engine that determines what to do with a message when it is recieved from the *logger*
+3. **Filters:** allow you to restrict the type of messages that are sent from the *logger* to the *handler*
+4. **Formatters:** describe the text representation of the log message
+
+Simple, right? For more information, check out the [Django documentation on logging][1].
+
+## Setting up your Project for Logging
+
+Logging configuration is specified in your project's `settings.py` file. Let's go through each of the four components from bottom to top, one-by-one and explain what we're going to do.
+
+## Formatters
+
+First let's declare the format that we can log entries in. I'm going to use two formats, `verbose` and `simple`:
+
+{% syntax python %}
+    'formatters': {
+        'verbose': {
+            'format' : "[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s",
+            'datefmt' : "%d/%b/%Y %H:%M:%S"
+        },
+        'simple': {
+            'format': '%(levelname)s %(message)s'
+        },
+    },
+{% endsyntax %}
+
+## Filters
+
+In my example, I don't want to filter anything. But if I did my filters would look like so:
+
+{% syntax python %}
+    'filters': {
+        'special': {
+            '()': 'project.logging.SpecialFilter',
+            'foo': 'bar',
+        }
+    },
+{% endsyntax %}
+
+This defines one filter, project.logging.SpecialFilter, using the alias special. In this case, the argument foo will be given a value of bar when instantiating the SpecialFilter.
+
+## Handlers
+
+This is where it gets fun. Now we're going to tell Django to log all of our output messages to a file:
+
+{% syntax python %}
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'mysite.log',
+            'formatter': 'verbose'
+        },
+    },
+{% endsyntax %}
+
+`level` means to log anything `DEBUG` or higher (which includes all levels) with this handler.
+
+## Loggers
+
+Finally, we will declare two loggers to be used, one for the django core and one for your application:
+
+{% syntax python %}
+    'loggers': {
+        'django': {
+            'handlers':['file'],
+            'propagate': True,
+            'level':'DEBUG',
+        },
+        'MYAPP': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+        },
+    }
+{% endsyntax %}
+
+Replace `MYAPP` with the name of your application to test things out.
+
+## Full Project Configuration
+
+According to the above, we should now have a logging config in `settings.py` that looks like this:
+
+{% syntax python %}
+# settings.py
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format' : "[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s",
+            'datefmt' : "%d/%b/%Y %H:%M:%S"
+        },
+        'simple': {
+            'format': '%(levelname)s %(message)s'
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'mysite.log',
+            'formatter': 'verbose'
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers':['file'],
+            'propagate': True,
+            'level':'DEBUG',
+        },
+        'MYAPP': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+        },
+    }
+}
+
+{% endsyntax %}
+
+## Testing Logging
+
+Let's go to our `views.py` file and create some new functions that use logging:
+
+{% syntax python %}
+# views.py
+import logging
+logger = logging.getLogger(__name__)
+
+def myfunction():
+	logger.debug("this is a debug message!")
+
+def myotherfunction():
+	logger.error("this is an error message!!")
+{% endsyntax %}
+
+Now we'll use the shell to call these functions.
+
+{% syntax pycon %}
+>>> from polls.views import *
+>>> myfunction()
+>>> myotherfunction()
+{% endsyntax %}
+
+And here is the output in our mysite.log file:
+
+{% syntax bash %}
+[16/Apr/2013 09:49:38] DEBUG [polls.views:7] this is a debug message!
+[16/Apr/2013 09:49:46] ERROR [polls.views:10] this is an error message!!
+{% endsyntax %}
+
+## Next Steps
+
+If you have a complex project with multiple applications, you can create multiple handlers with different file names to have multiple log files. As always, [read the docs][1] and good luck!
+
+[1]: https://docs.djangoproject.com/en/1.5/topics/logging/
