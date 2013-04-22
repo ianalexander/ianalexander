@@ -1,0 +1,49 @@
+---
+title: Using EC2 Security Groups with Puppet's ENC in Python
+excerpt: >
+    Managing node definitions with an ENC can be tedious and difficult. To work around this, I've written a small ENC in Python that uses EC2 Security Groups to generate node classification for Puppet.
+created: !!timestamp '2013-04-22 08:00:00'
+---
+
+Managing node definitions with an ENC can be tedious and difficult. For the project I am working on, manually adding and removing node definitions simply won't work for me. To work around this, I've written a small ENC in Python that uses EC2 Security Groups to generate node classification for Puppet.
+
+## ec2-enc.py
+
+The ENC is quite simple. [ec2-enc][1] accepts only one argument (like an ENC should), a hostname of the new instance. It then converts the hostname to lowercase and uses Python's ``boto`` library to query the EC2 Security Groups for that node. There is a dictionary called `GROUPS` that contains key => value pairs that correspond to an EC2 Security Group and a corresponding Puppet class. The script looks like this:
+
+{% syntax python %}
+#! /usr/bin/python
+ 
+# ec2-enc.py
+# A simple Puppet ENC that converts EC2 Security Groups to Puppet classes
+ 
+import boto.ec2
+import sys
+ 
+# EC2Group: Puppet Class
+GROUPS = {'default': 'role::default', 'web': 'role::web', 'app': 'role::app'}
+ 
+conn = boto.ec2.connect_to_region( "us-east-1",
+  aws_access_key_id='key',
+  aws_secret_access_key='secret' )
+ 
+for r in conn.get_all_instances():
+  for i in r.instances:
+    if i.public_dns_name:
+      # print "public: %s\tprivate: %s" % (i.public_dns_name, i.private_dns_name)
+      if i.private_dns_name.lower() ==  sys.argv[1].lower():
+        # print "match! " + str(i.groups[0].name)
+        print "classes:\n  %s:" % (GROUPS[i.groups[0].name])
+{% endsyntax %}
+
+## Roles and Profiles
+
+I highly, highly recommend using a [roles/profiles based puppet architecture][2] to take best advantage of this system. Each Security Group represents one "role" for a type of node, and you can create more security groups to match more role types. This allows you to minize complexity and version control your role defintions, as opposed to having a complex node YAML definition.
+
+## Next Steps
+
+Depending on your setup, you may need to implement more robust YAML generation to match a more complex setup. Read up on [Puppet ENCs][3] to learn how to create a more complex ENC. Submit a [fork request][1] if you want to extend it!
+
+[1]: https://gist.github.com/ianalexander/5431330
+[2]: http://www.slideshare.net/PuppetLabs/roles-talk
+[3]: http://docs.puppetlabs.com/guides/external_nodes.html
