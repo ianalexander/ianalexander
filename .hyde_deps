@@ -1,5 +1,8 @@
 !!python/unicode 'about.html': [macros.j2, base.j2, analytics.j2]
+!!python/unicode 'atom': [redirect.j2]
+!!python/unicode 'atom.xml': [atom.j2]
 !!python/unicode 'blog/.hyde_deps': [blog.j2, base.j2, analytics.j2]
+!!python/unicode 'blog/35f5ae6d3aa29df800fb3e777c7e84a7.xml': [atom.j2]
 !!python/unicode 'blog/angry-post.html': [blog.j2, macros.j2, base.j2, analytics.j2]
 !!python/unicode 'blog/atom.xml': [atom.j2]
 !!python/unicode 'blog/building-a-true-oauth-20-api-with-django-and-tasty-pie.html': [
@@ -7,7 +10,11 @@
 !!python/unicode 'blog/does-the-internet-really-need-another-blog.html': [blog.j2,
   base.j2, analytics.j2]
 !!python/unicode 'blog/excerpts.xml': [atom.j2, macros.j2]
+!!python/unicode 'blog/feed': [redirect.j2]
+!!python/unicode 'blog/getting-started-with-django-logging-in-5-minutes.html': [blog.j2,
+  base.j2, analytics.j2]
 !!python/unicode 'blog/happy-post.html': [blog.j2, macros.j2, base.j2, analytics.j2]
+!!python/unicode 'blog/ianalexandr.xml': [atom.j2]
 !!python/unicode 'blog/index.html': [listing.j2, base.j2, analytics.j2]
 !!python/unicode 'blog/one-post.html': [blog.j2, base.j2, analytics.j2]
 !!python/unicode 'blog/sad-post.html': [blog.j2, macros.j2, base.j2, analytics.j2]
@@ -17,6 +24,8 @@
 !!python/unicode 'blog/tags/thoughts.html': [macros.j2, base.j2, tagged_posts.j2,
   analytics.j2]
 !!python/unicode 'blog/two-post.html': [blog.j2, base.j2, analytics.j2]
+!!python/unicode 'blog/using-ec2-security-groups-with-puppets-enc-in-python.html': [
+  blog.j2, base.j2, analytics.j2]
 !!python/unicode 'blog\does-the-internet-really-need-another-blog.html': [blog.j2,
   base.j2, analytics.j2]
 !!python/unicode 'css/bootstrap-responsive.css': []
@@ -24,6 +33,7 @@
 !!python/unicode 'css/bootstrap.css': []
 !!python/unicode 'css/bootstrap.min.css': []
 !!python/unicode 'css/main.css': []
+!!python/unicode 'feed': [redirect.j2]
 !!python/unicode 'index.html': [base.j2, analytics.j2]
 !!python/unicode 'js/main.js': []
 !!python/unicode 'js/plugins.js': []
