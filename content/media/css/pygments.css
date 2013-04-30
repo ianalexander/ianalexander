@@ -15,14 +15,11 @@ pre {
 
 .code {
 	margin: 16px -32px;
-	padding: 16px 32px;
+	padding: 16px 32px 32px 32px;
 	position: relative;
 	background: #f0f0f0; 
 	/*color: #f8f8f2;*/
 	/*border: 1px solid rgba(0, 0, 0, 0.15);*/
-	-webkit-border-radius: 4px;
-	   -moz-border-radius: 4px;
-	        border-radius: 4px;
 }
 
 /* Sweet CSS Hack here to get Hyde to stop displaying the figcaption */
@@ -31,7 +28,7 @@ figure.code figcaption {
 	font-size: 13px;
 	position: absolute; 
 	right: 32px;
-	bottom: 0px;
+	bottom: 8px;
 }
 figure.code > br { display: none; }/*
 figure.code figcaption {
