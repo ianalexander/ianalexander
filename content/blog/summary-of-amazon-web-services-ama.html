@@ -1,0 +1,62 @@
+---
+title: Summary of the Amazon Web Services AMA
+excerpt: >
+    Words
+created: !!timestamp '2013-05-20 22:00:00'
+---
+
+Last week, a reddit user under the name 'AWSIAMA' [posted an AMA](http://www.reddit.com/r/IAmA/comments/1e5o4p/iaman_exaws_engineer_ask_me_anything_about_the/) about being an Engineer at the AWS cloud. Like most Reddit AMAs, there is a lot of noise to get to the really good parts. This is a summary of the AMA highlighting the most interesting and useful pieces of information.
+
+## Working at Amazon
+
+> Negative, their stock plan isn't very great either. You don't go to Amazon for the pay. You go for the free beer, literally. Also, there is a 10% discount on all things at Amazon.com up to the first $1000. So a maximum of $100 in savings. The companies core values include "frugality" and that's just the word "cheap" wrapped up in a bow.
+> 
+> ...
+> 
+> Amazon is a product of the past laying the groundwork for the future. One of my friends who was a SDE (Software Development Engineer) had the most mundane tasks ever. He actually quit as well and went to work somewhere for a little less money, but doing some far more rewarding work.
+>
+> Putting Amazon SDE on your resume is quickly turning into the same thing as putting Google SDE on your resume. So, while you may feel it's boring, the real reward will be the job opportunities in the future.
+
+## "The Cloud" and Marketing Hype
+
+> The cloud, it's an "interesting" concept, because in a lot of ways it's still just a VPS. Sure it has some redundant features, but the definition of cloud is fairly dynamic and bent to fit whatever a company wants to sell as a "cloud".
+
+## The Competition
+
+> I believe that Microsoft Azure and AWS (as well as Google Compute Cloud, Rackspace and even places like Linode) are all on the same playing field to a point. If it was a venn diagram (remember 2nd grade now) there would be major overlap. The places outside the overlap is what differentiates all the individual companies.
+>
+> I think that healthy competition will drive down pricing to fair levels as well as encourage upgrades and better levels of quality all around. As far as serious threat? Well, no, I don't consider Azure a threat to AWS, but I consider Google a threat to AWS. Google's cloud has been outperforming AWS since very private beta and performance means a lot in the cloud.
+>
+> Anyone who thinks there is a "cloud war" currently and AWS is seeing any type of real challenge is just fooling themselves. Nobody can compete currently with the size of AWS, they were the first in and will be the last out.
+>
+> Google however will make it rain a bit, I've been using their cloud platform a little bit lately and I have to say. It's hella impressive.
+
+## EBS, EBS-Optimized & Provisioned IOPS
+
+> EBS v. EBSo is honestly the easiest thing to explain why you need it. EBS and network traffic flows over the same NIC. EBSo adds a QOS marker to the packets. That simple. Anyone you talk to with some networking background will explain to you that by doing that, you're going to significantly smooth out your EBS experience under heavy load instantly.
+>
+> The ratio is simply marketing, it's the internal break point. If you're using 10GB and rushing 30k IOPS over it, they're not actually breaking even on the disk since you're over utilizing the network bandwidth. The 10:1 ratio helps keep the whole system in that happy green zone where there is a nice profit margin and good performance.
+>
+> Provisioned IOPS are typically best to move to AFTER you learn what your disk io is going to look like. Profile your EBS volumes, and if you use on average 318 IOPS throughout the month, then allocate 280IOP disks, if you calculate out the IOPS cost on non PIOPS disks to PIOPS cost, you'll save.
+>
+> Consider PIOPS more of reservation and then it's best paired with EBSo to ensure you can get quality IO at all times.
+
+## "Dirty Secret" of RDS
+
+> So, here's a BIG secret to RDS. Create a new RDS instance. Allocate the minimum amount of storage possible. Then, increase that storage by 5GB (only works on Oracle and MySQL) until you hit how much you want. Yes, this is slow, yes, this is a HUGE pain in the ass. But, everytime you increase storage, you're striping disks. More disks = better io and less seek time and in turn reducing CPU load and increasing responsiveness. Dirty little secret, lots of people do it.
+
+## AWS' Xen Setup
+
+> Well, typically the hardware nodes (HN) runs a copy of Amazon Linux, which has several internal flavors. Obviously this is done to maintain image quality and keep reproducibility. Each HN is silo'd like you say. So, if you're running m1.xl, you'll be sharing with only other m1.xl's. There are two flavors of HN's, one for "on-demand" and one for "vpc" (hence the new VPC by default announcement to fix that disparity). On the old on-demand HN's you have "slots", each slot is assigned an internal IP address. Once your server is in a slot, it get's that internal IP address and an EIP is NAT'd to that internal IP.
+
+## On-Demand vs. VPC
+
+> The major difference between VPC and On-Demand HN's is the fact that the On-Demand HN's, like I said, have IPs assigned to the slots. Where the VPC HN's do as well, but they're not used. They get your subnet routed to them. They get EC2 "slots" because it's easier to maintain a single platform as much as possible and diverging as less as possible.
+
+## NAT Servers
+
+> As far as NAT servers, hate them sons of bitches. Honestly, Amazon should have invested in real hardware. NAT instances aren't actually "NAT" according to RFC, they're actually PAT (Port Address Translation). They just translate all ports and forward them. However, because the NAT devices are actually x86 devices, you gotta use a ton of them to get the throughput of a single mid-grade router doing the same function due to a lack of ASIC chips. Stupid choice imo.
+>
+> The NAT devices which are doing all this work are called "Blackfoots" unless you've spawned a specific "NAT Instance" in your VPC, which is an instance, obviously. The Blackfoots are shared NAT devices on fairly beefy hardware and do multiple 10Gb network ports worth of PAT.
+>
+> If I were to re-architect the network layer, I would grab a handful of Nexus 7000's for routing all my internal traffic, do 1:1 natting at the Nexus, then run some Nexus 5000's to each row of racks and terminate each rack with a Nexus fabric extender. The network performance increase would most likely give people whiplash from their neck snapping back.
