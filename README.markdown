@@ -1,1 +1,1 @@
-Basic template for hyde.
+This is the hyde source for ianalexandr.com
