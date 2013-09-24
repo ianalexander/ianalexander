@@ -1,0 +1,35 @@
+---
+title: 'Hacker Networking: Hacking the LinkedIn API'
+excerpt: >
+    Words
+created: !!timestamp '2013-09-24 11:00:00'
+---
+
+When I was hunting for a new job I would repeatedly think to myself "I need to find a way to get introduced to more people". LinkedIn's API doesn't allow you to list the 2nd degree connections of your network, but through a few hacks we can get around this to get lists of people we can be introduced to.
+
+## Retrieve 2nd Degree Connections for a Given User
+
+While LinkedIn's Official API does not allow you to retrieve 2nd degree connections for other users, their "unofficial" web api does. For this example, I will be using Chrome's Developer Tools to monitor network requests. You can easily do the same with Firebug, Fiddler2, or the tool of your choice.
+
+I f you enable the "Network" Developer Tools tab when browsing to your own profile at https://www.linkedin.com/profile/view, you will see a lot of ajax requests being fired as the page is loaded. If you scroll to the bottom near your "Connections" section and click the "Next" button, you will see an interesting request fired:
+
+{% syntax bash %}
+https://www.linkedin.com/profile/profile-v2-connections?id={your linkedin id}&offset=10&count=10&distance=0&type=INITIAL&_=1380053112371
+{% endsyntax %}
+
+`/profile-v2-connections` returns JSON data for your connections. It accepts both `offset` and `count` arguments. I wonder what happens if we change the offset to 0 and the count to a higher number...
+
+{% syntax bash %}
+https://www.linkedin.com/profile/profile-v2-connections?id={your linkedin id}&offset=0&count=1000&distance=0&type=INITIAL&_=1380053112371
+{% endsyntax %}
+
+What do you know! It returned all my connections! Now, do you think we can change that `id` parameter to one of our own connections and see all of their connections?
+
+{% syntax bash %}
+https://www.linkedin.com/profile/profile-v2-connections?id={your connection's id}&offset=0&count=1000&distance=0&type=INITIAL&_=1380053112371
+{% endsyntax %}
+
+It works! 
+
+## Retrieve 1000 "People I May Know"
+
